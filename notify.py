@@ -35,7 +35,7 @@ def build_body(jobs):
 
 if __name__ == "__main__":
     seen = already_sent()
-    new = [j for j in ranked() if j["score"] >= 30 and j["url"] not in seen][:15]
+    new = [j for j in ranked() if j["score"] >= 30 and j["url"] not in seen][:25]
     print(f"Skipping {len(seen)} jobs already sent; {len(new)} new today.")
     today = datetime.date.today().strftime("%b %d, %Y")
     r = requests.post(API, headers=HEADERS, timeout=20,
