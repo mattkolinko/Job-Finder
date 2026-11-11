@@ -2,7 +2,9 @@ name: Daily job email
 on:
   schedule:
     - cron: "0 13 * * *"   # 7am Mountain time
-  workflow_dispatch:        # lets you run it by hand
+  workflow_dispatch:
+permissions:
+  issues: write
 jobs:
   run:
     runs-on: ubuntu-latest
@@ -14,5 +16,4 @@ jobs:
       - run: pip install requests
       - run: python notify.py
         env:
-          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
-          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
