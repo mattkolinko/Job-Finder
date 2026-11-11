@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Job Finder">
+<meta name="theme-color" content="#1f3864">
+<title>Job Finder</title>
+<style>
+  body{font-family:-apple-system,system-ui,sans-serif;margin:0;background:#f2f4f8;color:#1a1a1a}
+  header{background:#1f3864;color:#fff;padding:18px 16px calc(14px + env(safe-area-inset-top)) ;padding-top:calc(18px + env(safe-area-inset-top))}
+  header h1{margin:0;font-size:22px} header p{margin:4px 0 0;opacity:.8;font-size:14px}
+  .tabs{display:flex;gap:8px;padding:12px 16px}
+  .tabs button{flex:1;padding:8px;border:0;border-radius:8px;background:#dde3ee;font-size:14px}
+  .tabs button.on{background:#1f3864;color:#fff}
+  .day{padding:4px 16px;font-weight:600;color:#555;font-size:13px;text-transform:uppercase}
+  .card{background:#fff;margin:8px 16px;padding:14px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .card.done{opacity:.45}
+  .top{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#666}
+  .score{font-weight:700;color:#1f3864;font-size:15px}
+  .track{padding:2px 8px;border-radius:10px;background:#e8eefc;font-size:12px}
+  .track.def{background:#fde8e8}
+  .title{font-size:17px;font-weight:600;margin:6px 0 2px}
+  .co{font-size:15px} .meta{font-size:13px;color:#666;margin-top:4px}
+  .row{display:flex;gap:8px;margin-top:12px}
+  .row a,.row button{flex:1;text-align:center;padding:10px;border-radius:8px;font-size:15px;text-decoration:none;border:0}
+  .apply{background:#1f3864;color:#fff} .mark{background:#e6e9ef;color:#1a1a1a}
+  .msg{padding:40px 16px;text-align:center;color:#666}
+</style>
+</head>
+<body>
+<header><h1>Job Finder</h1><p id="sub">Loading today's matches…</p></header>
+<div class="tabs">
+  <button id="tNew" class="on" onclick="show('new')">To review</button>
+  <button id="tDone" onclick="show('done')">Applied</button>
+</div>
+<div id="list"></div>
+
+<script>
+const USERNAME = "mattkolinko";   // <-- change this
+const REPO = "job-finder";
+const DAYS = 5;   // how many recent daily lists to show
+
+const applied = JSON.parse(localStorage.getItem("applied") || "{}");
+let jobs = [], view = "new";
+
+function parse(issue){
+  const re = /\*\*(\d+)\/100\*\* \[([^\]]+)\] (.+?): \[(.+?)\]\((\S+?)\)\s*\n([^\n]*)/g;
+  const out = []; let m;
+  while ((m = re.exec(issue.body || ""))) {
+    out.push({score:+m[1], track:m[2], company:m[3], title:m[4], url:m[5],
+              meta:m[6].replace(/_/g,""), day:issue.title.replace("Job matches for ","")});
+  }
+  return out;
+}
+
+function show(v){
+  view = v;
+  tNew.className = v==="new" ? "on" : ""; tDone.className = v==="done" ? "on" : "";
+  const items = jobs.filter(j => v==="new" ? !applied[j.url] : applied[j.url]);
+  if (!items.length){ list.innerHTML = `<div class="msg">${v==="new" ? "All caught up." : "Nothing marked applied yet."}</div>`; return; }
+  let html = "", lastDay = "";
+  for (const j of items){
+    if (j.day !== lastDay){ html += `<div class="day">${j.day}</div>`; lastDay = j.day; }
+    const def = j.track.toLowerCase().startsWith("def");
+    html += `<div class="card ${applied[j.url]?"done":""}">
+      <div class="top"><span class="score">${j.score}/100</span><span class="track ${def?"def":""}">${j.track}</span></div>
+      <div class="title">${j.title}</div><div class="co">${j.company}</div>
+      <div class="meta">${j.meta}</div>
+      <div class="row">
+        <a class="apply" href="${j.url}" target="_blank" rel="noopener">Apply</a>
+        <button class="mark" onclick="toggle('${encodeURIComponent(j.url)}')">${applied[j.url]?"Undo":"Mark applied"}</button>
+      </div></div>`;
+  }
+  list.innerHTML = html;
+}
+
+function toggle(u){
+  u = decodeURIComponent(u);
+  applied[u] ? delete applied[u] : applied[u] = Date.now();
+  localStorage.setItem("applied", JSON.stringify(applied));
+  show(view);
+}
+
+fetch(`https://api.github.com/repos/${USERNAME}/${REPO}/issues?state=all&per_page=30`)
+  .then(r => r.json())
+  .then(issues => {
+    const daily = issues.filter(i => (i.title||"").startsWith("Job matches")).slice(0, DAYS);
+    jobs = daily.flatMap(parse);
+    sub.textContent = daily.length ? `Latest list: ${daily[0].title.replace("Job matches for ","")}` : "No lists yet";
+    show("new");
+  })
+  .catch(() => { sub.textContent = "Couldn't load jobs. Check USERNAME at the top of the code."; });
+</script>
+</body>
+</html>
