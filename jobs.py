@@ -4,7 +4,7 @@ import re, requests
 TITLES = ["program manager", "project manager", "engagement manager", "technical program",
           "systems engineer", "test engineer", "integration engineer", "requirements engineer",
           "aerospace engineer", "verification", "project engineer", "pmo", "manager"]
-LOCATIONS = ["colorado springs", "denver", "colorado", "remote", "united states", "us"]
+LOCATIONS = ["colorado springs", "denver", "colorado", "remote"]
 DEFENSE_WORDS = ["ts/sci", "top secret", "clearance", "dod", "department of war", "defense", "public sector"]
 MIN_SALARY = 150_000
 
