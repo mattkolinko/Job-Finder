@@ -2,6 +2,9 @@
 import os, re, datetime, requests
 from match import ranked
 
+DAILY_MAX = 25      # jobs per day
+PER_COMPANY = 2     # max jobs from any one company
+
 REPO = os.environ["GITHUB_REPOSITORY"]
 OWNER = os.environ.get("GITHUB_REPOSITORY_OWNER", REPO.split("/")[0])
 API = f"https://api.github.com/repos/{REPO}/issues"
@@ -33,13 +36,27 @@ def build_body(jobs):
                      f"[{j['title']}]({j['url']})  \n{j['location']} | {pay}{flag}\n")
     return "\n".join(lines)
 
+def pick(jobs, seen):
+    chosen, per_co = [], {}
+    for j in jobs:
+        if j["score"] < 30 or j["url"] in seen:
+            continue
+        c = j["company"].lower()
+        if per_co.get(c, 0) >= PER_COMPANY:
+            continue
+        per_co[c] = per_co.get(c, 0) + 1
+        chosen.append(j)
+        if len(chosen) >= DAILY_MAX:
+            break
+    return chosen
+
 if __name__ == "__main__":
     seen = already_sent()
-    new = [j for j in ranked() if j["score"] >= 30 and j["url"] not in seen][:25]
+    new = pick(ranked(), seen)
     print(f"Skipping {len(seen)} jobs already sent; {len(new)} new today.")
     today = datetime.date.today().strftime("%b %d, %Y")
     r = requests.post(API, headers=HEADERS, timeout=20,
         json={"title": f"Job matches for {today}", "body": build_body(new),
-              "assignees": [OWNER]})   # assigning you makes GitHub send the email
+              "assignees": [OWNER]})
     r.raise_for_status()
     print("Posted:", r.json()["html_url"])
